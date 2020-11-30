@@ -1,0 +1,23 @@
+[package]
+name = "pokemon_classifier"
+version = "0.0.1"
+authors = ["Bruno A. Muciño <mucinoab@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+telegram-bot = { git = "https://github.com/telegram-rs/telegram-bot.git" }
+image = "0.23.12"
+reqwest = { version = "0.10.9", features = ["json"] }
+log = "0.4.11"
+log4rs = "0.13.0"
+smol= "1.2.5"
+async-compat = "0.1.4"
+bytes = "0.6.0"
+pyo3 = "0.12.4"
+inline-python = "0.6.0"
+serde = "1.0.117"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic="abort"
