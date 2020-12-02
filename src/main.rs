@@ -11,8 +11,7 @@ use image::io::Reader as ImageReader;
 use inline_python::{python, Context};
 use serde::Deserialize;
 use smol::prelude::*;
-use telegram_bot::prelude::*;
-use telegram_bot::{Api, MessageKind, UpdateKind};
+use telegram_bot::{Api, CanSendMessage, MessageKind, ParseMode, UpdateKind};
 
 #[macro_use]
 extern crate log;
@@ -28,13 +27,15 @@ fn main() {
     let client = reqwest::Client::new();
 
     let mut telegram_url = String::from("https://api.telegram.org/");
-    let original_len = telegram_url.len();
+    let mut ans: Vec<String> = Vec::new();
+    let mut text = String::new();
+
+    let telegram_len = telegram_url.len();
 
     let c: Context = python! {
         from fastbook import load_learner
-        from pathlib import Path
 
-        learn_inf = load_learner(Path()/"export.pkl")
+        learn_inf = load_learner("./export.pkl")
     };
 
     info!("Listo para recibir querys.");
@@ -45,67 +46,97 @@ fn main() {
                 Ok(update) => {
                     if let UpdateKind::Message(mut message) = update.kind {
                         let now = Instant::now();
-
-                        if let MessageKind::Photo { ref mut data, .. } = message.kind {
-                            write!(
-                                telegram_url,
-                                "bot{}/getFile?file_id={}",
-                                &token, &data[0].file_id
-                            )
-                            .unwrap();
-
-                            let response = client
-                                .get(&telegram_url)
-                                .send()
-                                .await
-                                .unwrap()
-                                .json::<Response>()
-                                .await
+                        match message.kind {
+                            MessageKind::Photo { ref mut data, .. } => {
+                                write!(
+                                    telegram_url,
+                                    "bot{}/getFile?file_id={}",
+                                    &token, &data[0].file_id
+                                )
                                 .unwrap();
 
-                            telegram_url.truncate(original_len);
+                                let response = client
+                                    .get(&telegram_url)
+                                    .send()
+                                    .await
+                                    .unwrap()
+                                    .json::<Response>()
+                                    .await
+                                    .unwrap();
 
-                            write!(
-                                telegram_url,
-                                "file/bot{}/{}",
-                                &token, &response.result.file_path
-                            )
-                            .unwrap();
+                                telegram_url.truncate(telegram_len);
 
-                            let image_bytes = client
-                                .get(&telegram_url)
-                                .send()
-                                .await
-                                .unwrap()
-                                .bytes()
-                                .await
+                                write!(
+                                    telegram_url,
+                                    "file/bot{}/{}",
+                                    &token, &response.result.file_path
+                                )
                                 .unwrap();
 
-                            let img = ImageReader::new(Cursor::new(image_bytes))
-                                .with_guessed_format()
-                                .unwrap()
+                                let image_bytes = client
+                                    .get(&telegram_url)
+                                    .send()
+                                    .await
+                                    .unwrap()
+                                    .bytes()
+                                    .await
+                                    .unwrap();
+
+                                let img = ImageReader::with_format(
+                                    Cursor::new(image_bytes),
+                                    image::ImageFormat::Jpeg,
+                                )
                                 .decode()
                                 .unwrap();
 
-                            img.resize_exact(512, 512, image::imageops::FilterType::Nearest);
+                                img.resize_exact(512, 512, image::imageops::FilterType::Nearest);
 
-                            img.save("test.jpg").unwrap();
+                                img.save_with_format("i", image::ImageFormat::Jpeg).unwrap();
 
-                            c.run(python!{
-                                prediction = learn_inf.predict("test.jpg")
-                                ans = f"{prediction[0]} with a confidence of {max(prediction[-1]):.4}".title()
-                            });
+                                c.run(python! {
+                                    prediction = learn_inf.predict("i")
+                                    ans = f"{prediction[0]}", f"{max(prediction[-1]):.4}"
+                                });
 
-                            api.spawn(message.text_reply(c.get::<String>("ans")));
+                                ans = c.get::<Vec<String>>("ans");
 
-                            info!(
-                                "{} {:#?}",
-                                &message.from.first_name,
-                                Instant::now().duration_since(now)
-                            );
+                                write!(
+                                    &mut text,
+                                    "[{0}](https://www.pokemon.com/us/pokedex/{0}), confidence {1}",
+                                    ans[0], ans[1]
+                                )
+                                .unwrap();
 
-                            telegram_url.truncate(original_len);
+                                text[..=1].make_ascii_uppercase();
+
+                                api.spawn(message.chat.text(&text).parse_mode(ParseMode::Markdown));
+
+                                telegram_url.truncate(telegram_len);
+                                text.clear();
+                            }
+
+                            MessageKind::Text { ref mut data, .. } => {
+                                if data.contains("/h") {
+                                    api.spawn(message.chat.text(HELP));
+                                } else if data.contains("/s") {
+                                    api.spawn(
+                                        message.chat.text(START).parse_mode(ParseMode::Markdown),
+                                    );
+                                } else {
+                                    api.spawn(message.chat.text(NO_MATCH));
+                                }
+                            }
+
+                            _ => {
+                                api.spawn(message.chat.text(NO_MATCH));
+                            }
                         }
+
+                        info!(
+                            "{} {:#?}",
+                            &message.from.first_name,
+                            Instant::now().duration_since(now)
+                        );
                     }
                 }
 
@@ -127,3 +158,8 @@ struct Response {
 struct Result {
     file_path: String,
 }
+
+static START: &str =
+    "*PokeClass*\n\nJust send a picture of a Pokémon and I will try to guess which one it is using deep learning";
+static HELP: &str = "Just send a picture";
+static NO_MATCH: &str = "I didn't understand your message, try again or use /help";

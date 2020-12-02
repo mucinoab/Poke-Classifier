@@ -34,8 +34,8 @@ if path.exists():
         dest.mkdir(exist_ok=True)
         results = search_images_bing(key, f'{o}')
         download_images(dest, urls=results.attrgot('contentUrl'), max_pics=1000)
+        print(f"\r{c}{o}", end="")
         c+=1
-        print(f"\r{c}{o}")
 
 
 fns = get_image_files(path)
