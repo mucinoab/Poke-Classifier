@@ -11,7 +11,9 @@ use image::io::Reader as ImageReader;
 use inline_python::{python, Context};
 use serde::Deserialize;
 use smol::prelude::*;
-use telegram_bot::{Api, CanSendMessage, MessageKind, ParseMode, UpdateKind};
+use telegram_bot::{
+    prelude::*, reply_markup, Api, CanSendMessage, MessageKind, ParseMode, UpdateKind,
+};
 
 #[macro_use]
 extern crate log;
@@ -89,7 +91,7 @@ fn main() {
                                 .decode()
                                 .unwrap();
 
-                                img.resize_exact(512, 512, image::imageops::FilterType::Nearest);
+                                img.resize_exact(680, 680, image::imageops::FilterType::Nearest);
 
                                 img.save_with_format("i", image::ImageFormat::Jpeg).unwrap();
 
@@ -100,16 +102,25 @@ fn main() {
 
                                 ans = c.get::<Vec<String>>("ans");
 
+                                let pokelink =
+                                    format!("https://www.pokemon.com/us/pokedex/{}", ans[0]);
+
                                 write!(
                                     &mut text,
-                                    "[{0}](https://www.pokemon.com/us/pokedex/{0}), confidence {1}",
-                                    ans[0], ans[1]
+                                    "[{}]({}), confidence {}",
+                                    ans[0], pokelink, ans[1],
                                 )
                                 .unwrap();
 
                                 text[..=1].make_ascii_uppercase();
 
-                                api.spawn(message.chat.text(&text).parse_mode(ParseMode::Markdown));
+                                let mut reply = message.text_reply(&text);
+                                reply.parse_mode(ParseMode::Markdown);
+                                reply.reply_markup(
+                                    reply_markup!(inline_keyboard, ["Pokédex" url pokelink]),
+                                );
+
+                                api.spawn(reply);
 
                                 telegram_url.truncate(telegram_len);
                                 text.clear();
@@ -133,8 +144,10 @@ fn main() {
                         }
 
                         info!(
-                            "{} {:#?}",
+                            "{} {} {} {:#?}",
                             &message.from.first_name,
+                            ans[0],
+                            ans[1],
                             Instant::now().duration_since(now)
                         );
                     }

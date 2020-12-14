@@ -13,9 +13,8 @@ log4rs = "0.13.0"
 smol= "1.2.5"
 async-compat = "0.1.4"
 bytes = "0.6.0"
-pyo3 = "0.12.4"
 inline-python = "0.6.0"
-serde = "1.0.117"
+serde = "1.0.118"
 
 [profile.release]
 lto = "fat"
