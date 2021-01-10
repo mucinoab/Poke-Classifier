@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 telegram-bot = { git = "https://github.com/telegram-rs/telegram-bot.git" }
 image = "0.23.12"
-reqwest = { version = "0.10.9", features = ["json"] }
+reqwest = { version = "0.11.0", features = ["json"] }
 log = "0.4.11"
 log4rs = "0.13.0"
 smol= "1.2.5"
