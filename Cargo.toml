@@ -9,7 +9,7 @@ telegram-bot = { git = "https://github.com/telegram-rs/telegram-bot.git" }
 image = "0.23.12"
 reqwest = { version = "0.11.0", features = ["json"] }
 log = "0.4.11"
-log4rs = "0.13.0"
+log4rs = "1.0.0"
 smol= "1.2.5"
 async-compat = "0.1.4"
 bytes = "1.0.0"
