@@ -6,15 +6,15 @@ edition = "2018"
 
 [dependencies]
 telegram-bot = { git = "https://github.com/telegram-rs/telegram-bot.git" }
-image = "0.23.12"
-reqwest = { version = "0.11.0", features = ["json"] }
-log = "0.4.13"
+tokio = { version = "1.6.1", features = ["full"] }
+image = "0.23.14"
+reqwest = { version = "0.11.3", features = ["json"] }
+log = "0.4.14"
 log4rs = "1.0.0"
-smol= "1.2.5"
-async-compat = "0.1.4"
 bytes = "1.0.1"
 inline-python = "0.6.0"
-serde = "1.0.119"
+serde = "1.0.126"
+futures = "0.3.15"
 
 [profile.release]
 lto = "fat"
